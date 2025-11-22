@@ -20,7 +20,7 @@ model Monster {
   wis    Int
   cha    Int
   cr     String?
-  type   String
+  type   String?
 }
 
 model User {
