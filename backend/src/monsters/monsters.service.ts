@@ -1,18 +1,38 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class MonstersService {
   constructor(private prisma: PrismaService) {}
 
-findAll(page: number = 1, limit: number = 50) {
+  async findAll(page: number, limit: number, search?: string, type?: string) {
   const skip = (page - 1) * limit;
+  const where: Prisma.MonsterWhereInput = {}
 
-  return this.prisma.monster.findMany({
-    skip,
+  if (search){
+    where.name = { contains: search};
+  }
+
+  if (type){
+    where.type = type;
+  }
+
+  const total = await this.prisma.monster.count({ where })
+  const monters =  await this.prisma.monster.findMany({
+    skip: skip,
     take: limit,
-    orderBy: { name: "asc" },
-  });
+    where: where,
+    orderBy: {name: 'asc'},
+  })
+
+  return {
+    data: monters,
+    total: total,
+    page: page,
+    limit: limit,
+    totalPages: Math.ceil(total / limit),
+   };
 }
 
 

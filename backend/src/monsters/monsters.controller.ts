@@ -1,18 +1,21 @@
-import { Controller, Get, Param } from '@nestjs/common';
+import { Controller, Get, Param, Query, UsePipes, ValidationPipe } from '@nestjs/common';
 import { MonstersService } from './monsters.service';
+import { MonsterQueryDto } from './dto/monster-query.dto';
 
+@UsePipes(new ValidationPipe({transform: true}))
 @Controller('monsters')
 export class MonstersController {
   constructor(private readonly monstersService: MonstersService) {}
 
 @Get()
 findAll(
-  @Query("page") page: string,
-  @Query("limit") limit: string
+  @Query() query: MonsterQueryDto
 ) {
   return this.monstersService.findAll(
-    Number(page) || 1,
-    Number(limit) || 50
+    query.page,
+    query.limit,
+    query.search,
+    query.type,
   );
 }
 
