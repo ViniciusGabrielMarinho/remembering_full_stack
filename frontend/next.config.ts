@@ -7,7 +7,9 @@ const nextConfig: NextConfig = {
       {
         source: '/api/monsters/:path*',
         destination: 'http://localhost:8080/monsters/:path*',
-};
+    }];
+  }
+}
 
 
 export default nextConfig;
