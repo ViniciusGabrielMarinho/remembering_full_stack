@@ -1,19 +1,24 @@
-"use client";
+'use client';
+import { IMonster } from '../../src/Interfaces/monsters';
+import MonsterCard from '../../src/components/MonstersCards';
 
-export default function MonstersList({ monsters }: { monsters: any[] }) {
+export default function MonstersList({ monsters }: { monsters: IMonster[] }) {
+    if (!monsters?.length) {
+        return <p>No monsters found with the current filters.</p>;
+    }
 
-    if(!Array.isArray(monsters))
-      return null
-
-  return (
-    <div>
-        <ul>
-        {monsters.map((m) => (
-          <li key={m.id}>
-            {m.name} — CR {m.cr ?? "?"},
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
+    return (
+        <div
+            style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                gap: '25px',
+                padding: '20px 0',
+            }}
+        >
+            {monsters.map((m) => (
+                <MonsterCard key={m.id} monster={m} />
+            ))}
+        </div>
+    );
 }

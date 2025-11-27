@@ -21,6 +21,7 @@ model Monster {
   cha    Int
   cr     String?
   type   String?
+  speed  Json?
 }
 
 model User {

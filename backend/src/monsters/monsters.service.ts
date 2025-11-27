@@ -7,34 +7,39 @@ export class MonstersService {
   constructor(private prisma: PrismaService) {}
 
   async findAll(page: number, limit: number, search?: string, type?: string) {
-  const skip = (page - 1) * limit;
-  const where: Prisma.MonsterWhereInput = {}
+    const skip = (page - 1) * limit;
 
-  if (search){
-    where.name = { contains: search};
+    const where: Prisma.MonsterWhereInput = {};
+
+    if (search) {
+      where.name = {
+        contains: search,
+      };
+    }
+
+    if (type) {
+      where.type = {
+        equals: type.toLowerCase().trim()
+      };
+    }
+
+    const total = await this.prisma.monster.count({ where });
+
+    const monsters = await this.prisma.monster.findMany({
+      skip,
+      take: limit,
+      where,
+      orderBy: { name: 'asc' }
+    });
+
+    return {
+      data: monsters,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit)
+    };
   }
-
-  if (type){
-    where.type = type;
-  }
-
-  const total = await this.prisma.monster.count({ where })
-  const monters =  await this.prisma.monster.findMany({
-    skip: skip,
-    take: limit,
-    where: where,
-    orderBy: {name: 'asc'},
-  })
-
-  return {
-    data: monters,
-    total: total,
-    page: page,
-    limit: limit,
-    totalPages: Math.ceil(total / limit),
-   };
-}
-
 
   findOne(id: number) {
     return this.prisma.monster.findUnique({

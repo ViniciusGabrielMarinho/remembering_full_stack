@@ -1,62 +1,79 @@
-import { PrismaClient } from '@prisma/client';
-import * as fs from 'fs';
-import * as path from 'path';
+import { PrismaClient } from "@prisma/client";
+import fs from "fs";
+import path from "path";
 
 const prisma = new PrismaClient();
 
-async function main() {
-  const bestiaryPath = path.join(process.cwd(), 'data/bestiary');
+interface MonsterData {
+  name: string;
+  source?: string;
+  ac: number;
+  str: number;
+  dex: number;
+  con: number;
+  int: number;
+  wis: number;
+  cha: number;
+  cr: string | number;
+  type?: string;
+  speed?: Record<string, number>;
+  hp: number;
+}
 
-  // ler todos arquivos que começam com "bestiary-" e terminam com ".json"
-  const files = fs.readdirSync(bestiaryPath)
-    .filter(f => f.startsWith('bestiary-') && f.endsWith('.json'));
-
-  console.log(`Arquivos encontrados: ${files.length}`);
-
-  let monsters: any[] = [];
+async function loadMonsterFiles(): Promise<MonsterData[]> {
+  const monsters: MonsterData[] = [];
+  const dir = path.join(__dirname, "monsters");
+  const files = fs.readdirSync(dir).filter((f) => f.endsWith(".json"));
 
   for (const file of files) {
-    const fullPath = path.join(bestiaryPath, file);
-    const json = JSON.parse(fs.readFileSync(fullPath, 'utf8'));
+    const content = fs.readFileSync(path.join(dir, file), "utf-8");
+    const data = JSON.parse(content);
 
-    if (json.monster && Array.isArray(json.monster)) {
-      monsters.push(...json.monster);
+    if (Array.isArray(data)) {
+      monsters.push(...data);
+    } else {
+      monsters.push(data);
     }
   }
 
-  console.log(`Total de monstros encontrados: ${monsters.length}`);
+  return monsters;
+}
+
+async function main() {
+  const monsters = await loadMonsterFiles();
+  await prisma.monster.deleteMany({});
 
   for (const m of monsters) {
+    if (!m.hp) {
+      console.warn(`⚠ Monstro sem HP detectado: ${m.name}`);
+      continue; // ou m.hp = 1;
+    }
+
     await prisma.monster.create({
       data: {
         name: m.name,
-        source: m.source ?? "",
-        hp: m.hp?.average ?? 0,
-        ac: typeof m.ac?.[0] === "number" ? m.ac[0] : m.ac?.[0]?.ac ?? 0,
-        str: m.str ?? 0,
-        dex: m.dex ?? 0,
-        con: m.con ?? 0,
-        int: m.int ?? 0,
-        wis: m.wis ?? 0,
-        cha: m.cha ?? 0,
-
-       cr: typeof m.cr === "string"
-  ? m.cr
-  : (typeof m.cr === "object" && m.cr?.cr)
-    ? m.cr.cr
-    : "0",
-
-      }
+        source: m.source,
+        ac: m.ac,
+        str: m.str,
+        dex: m.dex,
+        con: m.con,
+        int: m.int,
+        wis: m.wis,
+        cha: m.cha,
+        cr: String(m.cr),
+        type: m.type,
+        speed: m.speed as any,
+        hp: m.hp, // ✔ agora sempre presente
+      },
     });
   }
-
-
-  console.log('Importação concluída!');
 }
 
 main()
-  .then(() => prisma.$disconnect())
-  .catch(err => {
-    console.error(err);
-    prisma.$disconnect();
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
   });
