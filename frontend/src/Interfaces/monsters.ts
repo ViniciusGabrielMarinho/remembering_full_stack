@@ -47,4 +47,5 @@ export interface IMonstersAPIResponse {
   total: number;
   limit: number;
   page: number;
+  totalPages?: number; // opcional mas útil
 }
