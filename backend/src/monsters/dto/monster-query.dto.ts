@@ -1,41 +1,45 @@
 import { IsOptional, IsInt, Min, Max, IsString } from 'class-validator';
-import { Type,Transform, TransformFnParams} from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 
 export class MonsterQueryDto {
   @IsOptional()
   @Type(() => Number)
-  @IsInt({ message: 'A página deve ser um número inteiro.'})
-  @Min(1, { message: 'A página não pode ser menor que 1.'})
+  @IsInt()
+  @Min(1)
   page: number = 1;
 
   @IsOptional()
   @Type(() => Number)
-  @IsInt({ message: 'A página deve ser um número inteiro.'})
-  @Min(1, { message: 'A página não pode ser menor que 1.'})
+  @IsInt()
+  @Min(1)
+  @Max(10000)
   limit: number = 50;
 
   @IsOptional()
-  @IsString({message: 'O termo de busca deve ser um texto.'})
-  @Transform((params: TransformFnParams) => (params.value ? params.value.toLowerCase().trim() : undefined))
+  @IsString()
+  @Transform(params => params.value ? params.value.toLowerCase().trim() : undefined)
   search?: string;
 
-@IsOptional()
-  @Transform(({ value }) => {
-    if (!value) return undefined;
+  @IsOptional()
+  @IsString()
+  @Transform(params => {
+    const value = params.value?.toLowerCase?.().trim();
 
-  // Se vier string "beast,undead"
-    if (typeof value === 'string') {
-    return value
+    if (!value || value === 'all' || value === 'tudo') {
+      return undefined;
+    }
+
+    return value;
+  })
+  type?: string;
+
+  @IsOptional()
+  @Transform(params => {
+    if (!params.value) return undefined;
+    return String(params.value)
       .split(',')
-      .map((t) => t.trim().toLowerCase())
-      .filter(Boolean);
-    }
-
-  // Se já vier array:
-    if (Array.isArray(value)) {
-     return value.map((t) => t.toLowerCase().trim());
-    }
-
-    return undefined;
+      .map(t => t.toLowerCase().trim())
+      .filter(v => v.length > 0);
   })
   types?: string[];
+}

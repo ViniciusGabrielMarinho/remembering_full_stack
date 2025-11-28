@@ -8,13 +8,12 @@ export class MonstersController {
   constructor(private readonly monstersService: MonstersService) {}
 
 @Get()
-findAll(
-  @Query() query: MonsterQueryDto
-) {
+findAll(@Query() query: MonsterQueryDto) {
   return this.monstersService.findAll(
     query.page,
     query.limit,
     query.search,
+    query.type,
     query.types,
   );
 }
