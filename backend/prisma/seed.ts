@@ -4,76 +4,45 @@ import path from "path";
 
 const prisma = new PrismaClient();
 
-interface MonsterData {
-  name: string;
-  source?: string;
-  ac: number;
-  str: number;
-  dex: number;
-  con: number;
-  int: number;
-  wis: number;
-  cha: number;
-  cr: string | number;
-  type?: string;
-  speed?: Record<string, number>;
-  hp: number;
-}
+async function main() {
+  const dir = path.join(__dirname, "..", "data", "bestiary");
 
-async function loadMonsterFiles(): Promise<MonsterData[]> {
-  const monsters: MonsterData[] = [];
-  const dir = path.join(__dirname, "monsters");
-  const files = fs.readdirSync(dir).filter((f) => f.endsWith(".json"));
+  const files = fs.readdirSync(dir).filter(f => f.endsWith(".json"));
 
   for (const file of files) {
-    const content = fs.readFileSync(path.join(dir, file), "utf-8");
-    const data = JSON.parse(content);
+    const fullPath = path.join(dir, file);
+    const raw = fs.readFileSync(fullPath, "utf8");
+    const json = JSON.parse(raw);
 
-    if (Array.isArray(data)) {
-      monsters.push(...data);
-    } else {
-      monsters.push(data);
+    if (!json.monster) continue;
+
+    for (const m of json.monster) {
+      await prisma.monster.create({
+        data: {
+          name: m.name,
+          source: m.source ?? null,
+          hp: typeof m.hp === "object" ? m.hp.average : m.hp,
+          ac: Array.isArray(m.ac) ? m.ac[0] : m.ac,
+          str: m.str,
+          dex: m.dex,
+          con: m.con,
+          int: m.int,
+          wis: m.wis,
+          cha: m.cha,
+          cr: typeof m.cr === "object" ? m.cr.cr : m.cr ?? null,
+          type: typeof m.type === "object" ? m.type.type : m.type ?? null,
+          speed: m.speed ? m.speed : {}
+        }
+      });
     }
   }
 
-  return monsters;
-}
-
-async function main() {
-  const monsters = await loadMonsterFiles();
-  await prisma.monster.deleteMany({});
-
-  for (const m of monsters) {
-    if (!m.hp) {
-      console.warn(`⚠ Monstro sem HP detectado: ${m.name}`);
-      continue; // ou m.hp = 1;
-    }
-
-    await prisma.monster.create({
-      data: {
-        name: m.name,
-        source: m.source,
-        ac: m.ac,
-        str: m.str,
-        dex: m.dex,
-        con: m.con,
-        int: m.int,
-        wis: m.wis,
-        cha: m.cha,
-        cr: String(m.cr),
-        type: m.type,
-        speed: m.speed as any,
-        hp: m.hp, // ✔ agora sempre presente
-      },
-    });
-  }
+  console.log("Importação completa!");
 }
 
 main()
-  .catch((e) => {
+  .then(() => prisma.$disconnect())
+  .catch(e => {
     console.error(e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
+    prisma.$disconnect();
   });

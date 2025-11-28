@@ -6,6 +6,22 @@ interface MonsterCardProps {
     monster: IMonster;
 }
 
+/** 
+ * Normaliza nomes para URLs do 5e.tools 
+ * Remove aspas, símbolos, parênteses, acentos e caracteres inválidos
+ */
+function cleanName(name: string): string {
+    return name
+        .normalize("NFD")                   // remove acentos
+        .replace(/[\u0300-\u036f]/g, "")    // remove marcas unicode
+        .replace(/"/g, "")                  // remove aspas
+        .replace(/'/g, "")                  // remove apostrofos
+        .replace(/\(/g, "")                 // remove (
+        .replace(/\)/g, "")                 // remove )
+        .replace(/[^a-zA-Z0-9 -]/g, "")     // remove qualquer símbolo estranho
+        .trim();
+}
+
 export default function MonsterCard({ monster }: MonsterCardProps) {
     const {
         name,
@@ -18,6 +34,18 @@ export default function MonsterCard({ monster }: MonsterCardProps) {
         actions = [],
         traits = [],
     } = monster;
+
+    // 🔥 Limpeza do nome e da source
+    const cleanedName = cleanName(name);
+    const cleanedSource = cleanName(monster.source ?? "");
+
+    // 🔥 URL completamente segura
+    const tokenUrl = `https://5e.tools/img/bestiary/tokens/${encodeURIComponent(cleanedSource)}/${encodeURIComponent(cleanedName)}.webp`;
+
+    // Fallback caso a imagem não exista
+    const onImageError = (e: any) => {
+        e.target.src = "/fallback-monster.png"; 
+    };
 
     // ---- SAFE SPEED FORMATTER ----
     const speedText = Object.entries(speed)
@@ -47,6 +75,20 @@ export default function MonsterCard({ monster }: MonsterCardProps) {
                 boxShadow: '0 0 10px #000',
             }}
         >
+
+            {/* IMAGEM */}
+            <img
+                src={tokenUrl}
+                alt={name}
+                style={{
+                    width: "100%",
+                    height: 200,
+                    objectFit: "contain",
+                    marginBottom: "12px",
+                }}
+                onError={onImageError}
+            />
+
             {/* NOME */}
             <h2 style={{ marginBottom: '10px', fontSize: '1.4rem' }}>{name}</h2>
 
@@ -84,3 +126,15 @@ export default function MonsterCard({ monster }: MonsterCardProps) {
 
             {/* ACTIONS */}
             {actions.length > 0 && (
+                <>
+                    <h3 style={{ marginTop: '12px' }}>Ações</h3>
+                    {actions.map((a) => (
+                        <p key={a.name}>
+                            <strong>{a.name}:</strong> {a.desc}
+                        </p>
+                    ))}
+                </>
+            )}
+        </div>
+    );
+}
