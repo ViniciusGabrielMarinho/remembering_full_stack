@@ -20,15 +20,22 @@ export class MonsterQueryDto {
   search?: string;
 
 @IsOptional()
-  @IsString({message: 'O termo de busca tem que ser um texto.'})
- @Transform((params: TransformFnParams) => {
-    const valueAsString = typeof params.value === 'string' ? params.value : '';
-    const cleanedValue = valueAsString ? valueAsString.toLowerCase().trim() : undefined;
+  @Transform(({ value }) => {
+    if (!value) return undefined;
 
-    if (cleanedValue === 'all' || cleanedValue === 'tudo') {
-        return undefined;
+  // Se vier string "beast,undead"
+    if (typeof value === 'string') {
+    return value
+      .split(',')
+      .map((t) => t.trim().toLowerCase())
+      .filter(Boolean);
     }
-    return cleanedValue;
+
+  // Se já vier array:
+    if (Array.isArray(value)) {
+     return value.map((t) => t.toLowerCase().trim());
+    }
+
+    return undefined;
   })
-  type?: string;
-}
+  types?: string[];

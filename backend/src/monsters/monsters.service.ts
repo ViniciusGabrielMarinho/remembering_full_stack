@@ -6,7 +6,7 @@ import { Prisma } from '@prisma/client';
 export class MonstersService {
   constructor(private prisma: PrismaService) {}
 
-  async findAll(page: number, limit: number, search?: string, type?: string) {
+  async findAll(page: number, limit: number, search?: string, types?: string) {
     const skip = (page - 1) * limit;
 
     const where: Prisma.MonsterWhereInput = {};
@@ -17,10 +17,10 @@ export class MonstersService {
       };
     }
 
-    if (type) {
+    if (types && types.length > 0) {
       where.type = {
-        equals: type.toLowerCase().trim()
-      };
+      in: types, // <── agora aceita vários tipos
+     };
     }
 
     const total = await this.prisma.monster.count({ where });

@@ -15,7 +15,7 @@ findAll(
     query.page,
     query.limit,
     query.search,
-    query.type,
+    query.types,
   );
 }
 
