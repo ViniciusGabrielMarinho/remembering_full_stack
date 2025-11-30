@@ -7,6 +7,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+
 model Monster {
   id     Int     @id @default(autoincrement())
   name   String
@@ -22,12 +23,14 @@ model Monster {
   cr     String?
   type   String?
   speed  Json?
-}
 
-model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  password  String
-  name      String?
-  createdAt DateTime @default(now())
+  /// --- CAMPOS NOVOS ---
+  traits           Json   @default("[]")
+  actions          Json   @default("[]")
+  bonusActions     Json   @default("[]")
+  reactions        Json   @default("[]")
+  legendaryActions Json   @default("[]")
+  mythicActions    Json   @default("[]")
+  lairActions      Json   @default("[]")
+  spellcasting     Json   @default("[]")
 }

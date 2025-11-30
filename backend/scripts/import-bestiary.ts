@@ -5,7 +5,7 @@ import * as path from "path";
 const prisma = new PrismaClient();
 
 /***************************************************
- * TIPOS
+ * TIPOS ORIGINAIS
  ***************************************************/
 interface HpObject {
   average?: number;
@@ -38,12 +38,24 @@ type BestiarySpeed =
   | Array<Record<string, any>>
   | undefined;
 
+/***************************************************
+ * CAMPOS NOVOS — O QUE VOCÊ PEDIU
+ ***************************************************/
+interface TraitBlock {
+  name?: string;
+  entries?: any[];
+}
+
+interface ActionBlock {
+  name?: string;
+  entries?: any[];
+}
+
 interface BestiaryMonster {
   name: string;
   source?: string;
 
   hp?: number | HpObject;
-
   ac?: BestiaryAc;
 
   str?: number;
@@ -53,24 +65,34 @@ interface BestiaryMonster {
   wis?: number;
   cha?: number;
 
-  cr?: number | string;
-  type?: BestiaryType;
+  cr?: any; // pode vir número, string, objeto, array… vamos normalizar
 
+  type?: BestiaryType;
   speed?: BestiarySpeed;
+
+  // NOVOS CAMPOS
+  trait?: TraitBlock[];
+  action?: ActionBlock[];
+  bonus?: ActionBlock[];
+  reaction?: ActionBlock[];
+  legendary?: ActionBlock[];
+  mythic?: ActionBlock[];
+  lairActions?: any[];
+  spellcasting?: any[];
 }
 
 /***************************************************
- * CLEANER — REMOVE ASPAS E CARACTERES BUGADOS
+ * CLEANER
  ***************************************************/
 function cleanNameForDb(name: string): string {
   return name
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "") // remove acentos
-    .replace(/"/g, "")               // remove aspas duplas
-    .replace(/'/g, "")               // remove aspas simples
-    .replace(/\(/g, "")              // remove parenteses
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/"/g, "")
+    .replace(/'/g, "")
+    .replace(/\(/g, "")
     .replace(/\)/g, "")
-    .replace(/[^a-zA-Z0-9 -]/g, "")  // remove caracteres estranhos
+    .replace(/[^a-zA-Z0-9 -]/g, "")
     .trim();
 }
 
@@ -79,24 +101,20 @@ function cleanNameForDb(name: string): string {
  ***************************************************/
 function normalizeHp(hp: BestiaryMonster["hp"]): number {
   if (!hp) return 1;
-
   if (typeof hp === "number") return hp;
 
   if (typeof hp === "object") {
     if (typeof hp.average === "number") return hp.average;
-
     if (hp.formula) {
       const match = hp.formula.match(/(\d+)/);
       if (match) return Number(match[1]);
     }
   }
-
   return 1;
 }
 
 function normalizeAc(ac: BestiaryMonster["ac"]): number {
   if (!ac) return 10;
-
   if (typeof ac === "number") return ac;
 
   if (Array.isArray(ac)) {
@@ -109,17 +127,42 @@ function normalizeAc(ac: BestiaryMonster["ac"]): number {
     return 10;
   }
 
-  if (
-    typeof ac === "object" &&
-    "ac" in ac &&
-    typeof (ac as AcEntry).ac === "number"
-  ) {
-    return (ac as AcEntry).ac;
-  }
-
+  if (typeof ac === "object" && "ac" in ac) return ac.ac;
   return 10;
 }
 
+/***************************************************
+ * NORMALIZAR CR (RESOLVE O TEU PROBLEMA)
+ ***************************************************/
+function normalizeCr(cr: any): string {
+  if (!cr) return "0";
+
+  // se vier número direto
+  if (typeof cr === "number") return String(cr);
+
+  // se vier string tipo "1/2", "5"
+  if (typeof cr === "string") return cr;
+
+  // se vier algo louco tipo { cr: "1" } ou { cr: { ... } }
+  if (typeof cr === "object") {
+    if ("cr" in cr) return normalizeCr(cr.cr);
+
+    // se vier array como [ { cr: "5" } ]
+    if (Array.isArray(cr)) {
+      for (const c of cr) {
+        const v = normalizeCr(c);
+        if (v !== "0") return v;
+      }
+      return "0";
+    }
+  }
+
+  return "0";
+}
+
+/***************************************************
+ * NORMALIZAR TYPE E SPEED
+ ***************************************************/
 function normalizeType(type: BestiaryType | { choose?: string[] }): string {
   if (!type) return "Unknown";
 
@@ -146,9 +189,7 @@ function normalizeSpeed(speed: BestiarySpeed): Record<string, any> {
   const result: Record<string, any> = {};
 
   if (Array.isArray(speed)) {
-    for (const entry of speed) {
-      if (entry) Object.assign(result, entry);
-    }
+    for (const entry of speed) Object.assign(result, entry);
     return result;
   }
 
@@ -161,7 +202,7 @@ function normalizeSpeed(speed: BestiarySpeed): Record<string, any> {
 }
 
 /***************************************************
- * VALIDADOR DE MONSTRO
+ * VALIDAR MONSTRO
  ***************************************************/
 function isValidMonster(m: BestiaryMonster): boolean {
   if (!m.name) return false;
@@ -193,7 +234,7 @@ async function importMonsters() {
 
     for (const m of monsters) {
       if (!isValidMonster(m)) {
-        console.log(`⚠ Pulando monstro inválido: ${m.name}`);
+        console.log(`⚠ Pulando inválido: ${m.name}`);
         continue;
       }
 
@@ -202,30 +243,38 @@ async function importMonsters() {
 
       try {
         await prisma.monster.create({
-          data: {
-            name: cleanName,
-            source: cleanSource,
+         data: {
+          name: cleanName,
+          source: cleanSource,
+          hp: normalizeHp(m.hp),
+          ac: normalizeAc(m.ac),
+          str: m.str!,
+          dex: m.dex!,
+          con: m.con!,
+          int: m.int!,
+          wis: m.wis!,
+          cha: m.cha!,
+          cr: normalizeCr(m.cr),
+          type: normalizeType(m.type ?? "Unknown"),
+          speed: JSON.stringify(normalizeSpeed(m.speed)),
 
-            hp: normalizeHp(m.hp),
-            ac: normalizeAc(m.ac),
-
-            str: m.str!,
-            dex: m.dex!,
-            con: m.con!,
-            int: m.int!,
-            wis: m.wis!,
-            cha: m.cha!,
-
-            cr: String(m.cr ?? "0"),
-            type: normalizeType(m.type ?? "Unknown"),
-            speed: normalizeSpeed(m.speed),
+    // CAMPOS NOVOS — agora aceitam JSON corretamente
+          traits: JSON.stringify(m.trait ?? []),
+          actions: JSON.stringify(m.action ?? []),
+          bonusActions: JSON.stringify(m.bonus ?? []),
+          reactions: JSON.stringify(m.reaction ?? []),
+          legendaryActions: JSON.stringify(m.legendary ?? []),
+          mythicActions: JSON.stringify(m.mythic ?? []),
+          lairActions: JSON.stringify(m.lairActions ?? []),
+          spellcasting: JSON.stringify(m.spellcasting ?? []),
           },
-        });
+      });
+
 
         console.log(`✔ Importado: ${cleanName}`);
         total++;
       } catch (err) {
-        console.log(`❌ Erro ao importar: ${cleanName}`);
+        console.log(`❌ Erro: ${cleanName}`);
         console.error(err);
       }
     }
