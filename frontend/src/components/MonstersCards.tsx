@@ -4,6 +4,7 @@ import React from "react";
 import { IMonster, IMonsterAttributes } from "../Interfaces/monsters";
 import { formatSpeed } from "../components/FormatSpeed";
 import Image from "next/image";
+import { useSavedCards } from "@/src/components/SavedCardsContext";
 
 // ---------------- ATTRIBUTES BLOCK ----------------
 const AttributesBlock: React.FC<{ attributes: IMonsterAttributes }> = ({ attributes }) => {
@@ -48,8 +49,19 @@ const getMonsterImage = (monster: IMonster) => {
 
 // -------------------- CARD --------------------------
 export default function MonsterCard({ monster }: { monster: IMonster }) {
+    const { saveCard } = useSavedCards();
+
+    function handleSave() {
+        saveCard({
+            id: Number(monster.id),
+            name: monster.name,
+            img: getMonsterImage(monster),
+        });
+    }
+
     return (
         <div
+            onClick={handleSave}
             style={{
                 background: "#1a0f0a",
                 border: "3px solid #8b4513",
@@ -60,7 +72,11 @@ export default function MonsterCard({ monster }: { monster: IMonster }) {
                 fontFamily: "Georgia, serif",
                 width: "280px",
                 margin: "auto",
+                cursor: "pointer",
+                transition: "transform 0.15s",
             }}
+            onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.02)")}
+            onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1.0)")}
         >
             {/* Name */}
             <h3

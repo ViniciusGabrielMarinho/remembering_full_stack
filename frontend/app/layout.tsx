@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
+import { SavedCardsProvider } from "../src/components/SavedCardsContext";
+import SavedSidebar from "../src/components/SavedSidebar";
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -25,9 +28,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased flex`}
       >
-        {children}
+        <SavedCardsProvider>
+          <SavedSidebar />
+          <div className="ml-48 w-full">{children}</div>
+        </SavedCardsProvider>
       </body>
     </html>
   );
